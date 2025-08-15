@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能日程管理器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/date-fns/2.29.3/index.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .input-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .input-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            border: none;
+            background: #f0f0f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .input-area {
+            margin-bottom: 20px;
+        }
+
+        .text-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s ease;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .file-input-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-area:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .file-input-area.dragover {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            width: 100%;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .calendar-section {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .calendar-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #e0e0e0;
+        }
+
+        .calendar-day {
+            background: white;
+            min-height: 120px;
+            padding: 10px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .calendar-day:hover {
+            background: #f8f9ff;
+        }
+
+        .calendar-day.other-month {
+            background: #f5f5f5;
+            color: #999;
+        }
+
+        .calendar-day.today {
+            background: #fff3e0;
+        }
+
+        .day-number {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .event {
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 2px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .event:hover {
+            transform: scale(1.02);
+        }
+
+        .event.study {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+        }
+
+        .event.work {
+            background: linear-gradient(135deg, #fd79a8, #e84393);
+        }
+
+        .event.personal {
+            background: linear-gradient(135deg, #55a3ff, #3742fa);
+        }
+
+        .event.other {
+            background: linear-gradient(135deg, #26de81, #20bf6b);
+        }
+
+        .event.completed {
+            opacity: 0.5;
+            text-decoration: line-through;
+            background: linear-gradient(135deg, #b2bec3, #636e72) !important;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .event-details {
+            line-height: 1.6;
+        }
+
+        .event-details h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .event-details .field {
+            margin-bottom: 15px;
+        }
+
+        .event-details .field label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        .event-details .field input,
+        .event-details .field select,
+        .event-details .field textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .event-details .field textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .event-details .time-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .event-details .links {
+            margin-top: 15px;
+        }
+
+        .event-details .links a {
+            color: #667eea;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .event-details .links a:hover {
+            text-decoration: underline;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-success {
+            background: #00b894;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .error {
+            color: #ff6b6b;
+            background: #ffe0e0;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .success {
+            color: #00b894;
+            background: #e0f7e9;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .day-events-modal .modal-content {
+            max-width: 600px;
+        }
+
+        .day-events-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .day-event-item {
+            padding: 12px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .day-event-item:hover {
+            background: #f8f9ff;
+            border-color: #667eea;
+        }
+
+        .day-event-item.completed {
+            opacity: 0.6;
+            text-decoration: line-through;
+        }
+
+        .day-event-time {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .day-event-title {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .day-event-category {
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: white;
+            display: inline-block;
+        }
+
+        .day-event-category.study {
+            background: #74b9ff;
+        }
+
+        .day-event-category.work {
+            background: #fd79a8;
+        }
+
+        .day-event-category.personal {
+            background: #55a3ff;
+        }
+
+        .day-event-category.other {
+            background: #26de81;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .calendar-day {
+                min-height: 80px;
+                padding: 5px;
+            }
+            
+            .input-section {
+                padding: 15px;
+            }
+
+            .event-details .time-inputs {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+
+        // 增强的智能文本解析函数
+        const parseTaskText = (text) => {
+            const task = {
+                title: '',
+                description: text,
+                dueDate: null,
+                startTime: null,
+                endTime: null,
+                category: 'other',
+                links: [],
+                details: ''
+            };
+
+            // 提取链接
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const links = text.match(urlRegex) || [];
+            task.links = links;
+
+            // 移除链接后的文本
+            const textWithoutLinks = text.replace(urlRegex, '').trim();
+
+            // 时间解析 - 支持多种格式
+            const now = new Date();
+            let foundDate = null;
+            let foundStartTime = null;
+            let foundEndTime = null;
+
+            // 1. 相对时间模式
+            const relativeTimePatterns = [
+                { pattern: /今天|today/i, days: 0 },
+                { pattern: /明天|tomorrow/i, days: 1 },
+                { pattern: /后天/i, days: 2 },
+                { pattern: /大后天/i, days: 3 },
+                { pattern: /下周一|next monday/i, days: getDaysUntilWeekday(1) },
+                { pattern: /下周二|next tuesday/i, days: getDaysUntilWeekday(2) },
+                { pattern: /下周三|next wednesday/i, days: getDaysUntilWeekday(3) },
+                { pattern: /下周四|next thursday/i, days: getDaysUntilWeekday(4) },
+                { pattern: /下周五|next friday/i, days: getDaysUntilWeekday(5) },
+                { pattern: /下周六|next saturday/i, days: getDaysUntilWeekday(6) },
+                { pattern: /下周日|下周天|next sunday/i, days: getDaysUntilWeekday(0) },
+                { pattern: /(\d+)天后/, days: (match) => parseInt(match[1]) },
+                { pattern: /一周后|next week/i, days: 7 },
+                { pattern: /两周后/i, days: 14 }
+            ];
+
+            // 2. 绝对时间模式 - 支持更多格式
+            const absoluteTimePatterns = [
+                // 支持 8.14, 8/14, 8-14 等格式
+                { pattern: /(\d{1,2})[\.\/\-](\d{1,2})(?:[\.\/\-](\d{2,4}))?/, type: 'mdy' },
+                // 支持传统格式：3月15日
+                { pattern: /(\d{1,2})月(\d{1,2})[日号]?/, type: 'chinese' },
+                // 支持完整日期格式
+                { pattern: /(\d{4})[年\-\/](\d{1,2})[月\-\/](\d{1,2})[日号]?/, type: 'full' }
+            ];
+
+            // 3. 时间模式 - 识别具体小时
+            const timePatterns = [
+                // 上午9点, 下午2点
+                { pattern: /上午(\d{1,2})[点时]?/, modifier: 'am' },
+                { pattern: /下午(\d{1,2})[点时]?/, modifier: 'pm' },
+                // 9:30, 14:30
+                { pattern: /(\d{1,2}):(\d{1,2})/, modifier: 'time' },
+                // 9点, 14点
+                { pattern: /(\d{1,2})[点时]/, modifier: 'hour' },
+                // 时间范围：9-11点, 2点到4点
+                { pattern: /(\d{1,2})[点时]?[-到至](\d{1,2})[点时]/, modifier: 'range' },
+                { pattern: /(\d{1,2}):(\d{1,2})[-到至](\d{1,2}):(\d{1,2})/, modifier: 'timeRange' }
+            ];
+
+            // 尝试解析相对时间
+            for (let pattern of relativeTimePatterns) {
+                const match = textWithoutLinks.match(pattern.pattern);
+                if (match) {
+                    const days = typeof pattern.days === 'function' 
+                        ? pattern.days(match) 
+                        : pattern.days;
+                    foundDate = new Date(now);
+                    foundDate.setDate(now.getDate() + days);
+                    break;
+                }
+            }
+
+            // 尝试解析绝对时间
+            if (!foundDate) {
+                for (let pattern of absoluteTimePatterns) {
+                    const match = textWithoutLinks.match(pattern.pattern);
+                    if (match) {
+                        let year = now.getFullYear();
+                        let month, day;
+
+                        switch (pattern.type) {
+                            case 'mdy':
+                                month = parseInt(match[1]);
+                                day = parseInt(match[2]);
+                                if (match[3]) {
+                                    year = parseInt(match[3]);
+                                    if (year < 100) year += 2000; // 处理两位年份
+                                }
+                                break;
+                            case 'chinese':
+                                month = parseInt(match[1]);
+                                day = parseInt(match[2]);
+                                break;
+                            case 'full':
+                                year = parseInt(match[1]);
+                                month = parseInt(match[2]);
+                                day = parseInt(match[3]);
+                                break;
+                        }
+                        
+                        if (month && day && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                            const testDate = new Date(year, month - 1, day);
+                            // 如果是今年的日期或未来日期，则采用
+                            if (testDate >= new Date(now.getFullYear(), 0, 1)) {
+                                foundDate = testDate;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 解析时间
+            for (let pattern of timePatterns) {
+                const match = textWithoutLinks.match(pattern.pattern);
+                if (match) {
+                    switch (pattern.modifier) {
+                        case 'am':
+                            foundStartTime = `${String(parseInt(match[1])).padStart(2, '0')}:00`;
+                            break;
+                        case 'pm':
+                            let hour = parseInt(match[1]);
+                            if (hour !== 12) hour += 12;
+                            foundStartTime = `${String(hour).padStart(2, '0')}:00`;
+                            break;
+                        case 'time':
+                            foundStartTime = `${String(parseInt(match[1])).padStart(2, '0')}:${String(parseInt(match[2])).padStart(2, '0')}`;
+                            break;
+                        case 'hour':
+                            let h = parseInt(match[1]);
+                            foundStartTime = `${String(h).padStart(2, '0')}:00`;
+                            break;
+                        case 'range':
+                            let startH = parseInt(match[1]);
+                            let endH = parseInt(match[2]);
+                            foundStartTime = `${String(startH).padStart(2, '0')}:00`;
+                            foundEndTime = `${String(endH).padStart(2, '0')}:00`;
+                            break;
+                        case 'timeRange':
+                            foundStartTime = `${String(parseInt(match[1])).padStart(2, '0')}:${String(parseInt(match[2])).padStart(2, '0')}`;
+                            foundEndTime = `${String(parseInt(match[3])).padStart(2, '0')}:${String(parseInt(match[4])).padStart(2, '0')}`;
+                            break;
+                    }
+                    break;
+                }
+            }
+
+            // 设置解析结果
+            if (foundDate) {
+                task.dueDate = foundDate;
+            }
+            if (foundStartTime) {
+                task.startTime = foundStartTime;
+            }
+            if (foundEndTime) {
+                task.endTime = foundEndTime;
+            }
+
+            // 分类判断
+            const categoryKeywords = {
+                study: /作业|homework|考试|exam|上课|class|课程|course|学习|study|assignment|论文|paper|实验|lab|预习|复习|quiz|测验|讲座|lecture/i,
+                work: /工作|work|会议|meeting|项目|project|任务|task|简历|resume|投递|apply|面试|interview|报告|report|客户|client|加班|overtime/i,
+                personal: /约会|date|聚会|party|购物|shopping|电话|call|银行|bank|办理|handle|医院|hospital|体检|checkup|生日|birthday|健身|gym|运动|exercise/i
+            };
+
+            for (let [category, regex] of Object.entries(categoryKeywords)) {
+                if (regex.test(textWithoutLinks)) {
+                    task.category = category;
+                    break;
+                }
+            }
+
+            // 提取干净的标题
+            let title = textWithoutLinks;
+            
+            // 移除时间相关表达
+            title = title.replace(/\d+天后|今天|明天|后天|大后天|下周[一二三四五六日天]|一周后|两周后|上午|下午|\d{1,2}[\.\/\-]\d{1,2}(?:[\.\/\-]\d{2,4})?|\d{1,2}月\d{1,2}[日号]?|\d{4}[年\-\/]\d{1,2}[月\-\/]\d{1,2}[日号]?|\d{1,2}[点时](\d{1,2}分?)?|\d{1,2}:\d{1,2}|\d{1,2}[点时]?[-到至]\d{1,2}[点时]?/g, '');
+            
+            // 移除常见动词和连接词
+            title = title.replace(/前|要|需要|记得|别忘了|完成|提交|参加|去|到|在|和|与|跟|给|为了|关于|的|了|是|有|会|将|把|被|让|使|做|进行/g, '');
+            
+            // 清理多余空白并截取合理长度
+            title = title.trim().replace(/\s+/g, ' ');
+            if (title.length > 25) {
+                title = title.substring(0, 25) + '...';
+            }
+            
+            task.title = title || '新任务';
+            task.details = textWithoutLinks;
+
+            return task;
+        };
+
+        // 获取到指定星期几的天数
+        function getDaysUntilWeekday(targetDay) {
+            const today = new Date();
+            const currentDay = today.getDay();
+            const daysUntil = (targetDay - currentDay + 7) % 7;
+            return daysUntil === 0 ? 7 : daysUntil;
+        }
+
+        // 主应用组件
+        const App = () => {
+            const [tasks, setTasks] = useState([]);
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [inputText, setInputText] = useState('');
+            const [activeTab, setActiveTab] = useState('text');
+            const [selectedTask, setSelectedTask] = useState(null);
+            const [selectedDayEvents, setSelectedDayEvents] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [message, setMessage] = useState('');
+            const [messageType, setMessageType] = useState('');
+
+            // 加载保存的任务
+            useEffect(() => {
+                const savedTasks = localStorage.getItem('smartSchedulerTasks');
+                if (savedTasks) {
+                    const parsedTasks = JSON.parse(savedTasks).map(task => ({
+                        ...task,
+                        dueDate: task.dueDate ? new Date(task.dueDate) : null,
+                        createdAt: new Date(task.createdAt)
+                    }));
+                    setTasks(parsedTasks);
+                }
+            }, []);
+
+            // 保存任务到localStorage
+            useEffect(() => {
+                if (tasks.length > 0) {
+                    localStorage.setItem('smartSchedulerTasks', JSON.stringify(tasks));
+                }
+            }, [tasks]);
+
+            // 设置提醒
+            useEffect(() => {
+                const checkReminders = () => {
+                    const now = new Date();
+                    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    const threeDaysFromNow = new Date(today);
+                    threeDaysFromNow.setDate(today.getDate() + 3);
+
+                    tasks.forEach(task => {
+                        if (!task.dueDate || task.completed) return;
+
+                        const taskDate = new Date(task.dueDate.getFullYear(), task.dueDate.getMonth(), task.dueDate.getDate());
+                        
+                        if (taskDate.getTime() === today.getTime() && !task.todayReminded) {
+                            showNotification(`今天截止: ${task.title}`, task.description);
+                            task.todayReminded = true;
+                        }
+                        
+                        if (taskDate.getTime() === threeDaysFromNow.getTime() && !task.threeDayReminded) {
+                            showNotification(`3天后截止: ${task.title}`, task.description);
+                            task.threeDayReminded = true;
+                        }
+                    });
+                };
+
+                const interval = setInterval(checkReminders, 60000);
+                checkReminders();
+
+                return () => clearInterval(interval);
+            }, [tasks]);
+
+            const showNotification = (title, body) => {
+                if (Notification.permission === 'granted') {
+                    new Notification(title, { body, icon: '/favicon.ico' });
+                } else if (Notification.permission !== 'denied') {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            new Notification(title, { body, icon: '/favicon.ico' });
+                        }
+                    });
+                }
+            };
+
+            const showMessage = (msg, type = 'success') => {
+                setMessage(msg);
+                setMessageType(type);
+                setTimeout(() => {
+                    setMessage('');
+                    setMessageType('');
+                }, 3000);
+            };
+
+            const handleTextSubmit = () => {
+                if (!inputText.trim()) {
+                    showMessage('请输入任务内容', 'error');
+                    return;
+                }
+
+                setLoading(true);
+                
+                try {
+                    const parsedTask = parseTaskText(inputText);
+                    const newTask = {
+                        ...parsedTask,
+                        id: Date.now(),
+                        completed: false,
+                        createdAt: new Date(),
+                        todayReminded: false,
+                        threeDayReminded: false
+                    };
+                    
+                    setTasks(prev => [...prev, newTask]);
+                    setInputText('');
+                    showMessage('任务添加成功！');
+                } catch (error) {
+                    showMessage('解析任务时出错，请重试', 'error');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleImageUpload = async (file) => {
+                if (!file || !file.type.startsWith('image/')) {
+                    showMessage('请上传有效的图片文件', 'error');
+                    return;
+                }
+
+                setLoading(true);
+                
+                try {
+                    const { data: { text } } = await Tesseract.recognize(file, 'chi_sim+eng');
+                    
+                    if (text.trim()) {
+                        const parsedTask = parseTaskText(text);
+                        const newTask = {
+                            ...parsedTask,
+                            id: Date.now(),
+                            completed: false,
+                            createdAt: new Date(),
+                            todayReminded: false,
+                            threeDayReminded: false
+                        };
+                        
+                        setTasks(prev => [...prev, newTask]);
+                        showMessage('图片解析成功，任务已添加！');
+                    } else {
+                        showMessage('未能从图片中识别出文字，请重试', 'error');
+                    }
+                } catch (error) {
+                    showMessage('图片处理失败，请重试', 'error');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleDrop = (e) => {
+                e.preventDefault();
+                const file = e.dataTransfer.files[0];
+                if (file) {
+                    handleImageUpload(file);
+                }
+            };
+
+            const handleDragOver = (e) => {
+                e.preventDefault();
+            };
+
+            const navigateMonth = (direction) => {
+                setCurrentDate(prev => {
+                    const newDate = new Date(prev);
+                    newDate.setMonth(prev.getMonth() + direction);
+                    return newDate;
+                });
+            };
+
+            const toggleTaskComplete = (taskId) => {
+                setTasks(prev => prev.map(task => 
+                    task.id === taskId ? { ...task, completed: !task.completed } : task
+                ));
+                showMessage(
+                    tasks.find(t => t.id === taskId)?.completed ? '任务标记为未完成' : '任务已完成！'
+                );
+            };
+
+            const updateTask = (taskId, updates) => {
+                setTasks(prev => prev.map(task => 
+                    task.id === taskId ? { ...task, ...updates } : task
+                ));
+                showMessage('任务更新成功');
+            };
+
+            const deleteTask = (taskId) => {
+                setTasks(prev => prev.filter(task => task.id !== taskId));
+                setSelectedTask(null);
+                showMessage('任务已删除');
+            };
+
+            const handleDayClick = (year, month, day) => {
+                const clickedDate = new Date(year, month, day);
+                const dayTasks = tasks.filter(task => {
+                    if (!task.dueDate) return false;
+                    const taskDate = new Date(task.dueDate);
+                    return taskDate.getFullYear() === year &&
+                           taskDate.getMonth() === month &&
+                           taskDate.getDate() === day;
+                });
+
+                if (dayTasks.length > 0) {
+                    setSelectedDayEvents({ date: clickedDate, tasks: dayTasks });
+                }
+            };
+
+            const renderCalendar = () => {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                const daysInMonth = lastDay.getDate();
+                const startingDayOfWeek = firstDay.getDay();
+
+                const days = [];
+                const today = new Date();
+
+                // 添加上个月的尾部日期
+                const prevMonth = new Date(year, month - 1, 0);
+                for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+                    const day = prevMonth.getDate() - i;
+                    days.push(
+                        <div key={`prev-${day}`} className="calendar-day other-month">
+                            <div className="day-number">{day}</div>
+                        </div>
+                    );
+                }
+
+                // 添加当前月的日期
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const currentDayDate = new Date(year, month, day);
+                    const isToday = currentDayDate.toDateString() === today.toDateString();
+                    
+                    const dayTasks = tasks.filter(task => {
+                        if (!task.dueDate) return false;
+                        const taskDate = new Date(task.dueDate);
+                        return taskDate.getFullYear() === year &&
+                               taskDate.getMonth() === month &&
+                               taskDate.getDate() === day;
+                    });
+
+                    days.push(
+                        <div 
+                            key={day} 
+                            className={`calendar-day ${isToday ? 'today' : ''}`}
+                            onClick={() => handleDayClick(year, month, day)}
+                        >
+                            <div className="day-number">{day}</div>
+                            {dayTasks.map(task => (
+                                <div 
+                                    key={task.id} 
+                                    className={`event ${task.category} ${task.completed ? 'completed' : ''}`}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedTask(task);
+                                    }}
+                                    title={`${task.startTime ? task.startTime + ' ' : ''}${task.title}`}
+                                >
+                                    {task.startTime && <span style={{fontSize: '10px', marginRight: '4px'}}>{task.startTime}</span>}
+                                    {task.title}
+                                </div>
+                            ))}
+                        </div>
+                    );
+                }
+
+                // 添加下个月的开头日期
+                const remainingCells = 42 - days.length;
+                for (let day = 1; day <= remainingCells; day++) {
+                    days.push(
+                        <div key={`next-${day}`} className="calendar-day other-month">
+                            <div className="day-number">{day}</div>
+                        </div>
+                    );
+                }
+
+                return days;
+            };
+
+            // 请求通知权限
+            useEffect(() => {
+                if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+            }, []);
+
+            return (
+                <div className="app-container">
+                    <div className="header">
+                        <h1>🗓️ 智能日程管理器</h1>
+                        <p>让AI帮你管理时间，从此不再错过重要事项</p>
+                    </div>
+
+                    {message && (
+                        <div className={messageType === 'error' ? 'error' : 'success'}>
+                            {message}
+                        </div>
+                    )}
+
+                    <div className="input-section">
+                        <div className="input-tabs">
+                            <button 
+                                className={`tab-button ${activeTab === 'text' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('text')}
+                            >
+                                📝 文字输入
+                            </button>
+                            <button 
+                                className={`tab-button ${activeTab === 'image' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('image')}
+                            >
+                                📷 图片识别
+                            </button>
+                        </div>
+
+                        <div className="input-area">
+                            {activeTab === 'text' ? (
+                                <>
+                                    <textarea 
+                                        className="text-input"
+                                        value={inputText}
+                                        onChange={(e) => setInputText(e.target.value)}
+                                        placeholder="智能解析示例：&#10;• 8.14上午9点开会&#10;• 明天下午2点到4点学习&#10;• 下周三前交作业&#10;• 3月15日投递简历 https://careers.tencent.com/xxx"
+                                        disabled={loading}
+                                    />
+                                    <button 
+                                        className="submit-btn" 
+                                        onClick={handleTextSubmit}
+                                        disabled={loading || !inputText.trim()}
+                                    >
+                                        {loading ? '⏳ 处理中...' : '✨ 智能解析并添加'}
+                                    </button>
+                                </>
+                            ) : (
+                                <div 
+                                    className="file-input-area"
+                                    onDrop={handleDrop}
+                                    onDragOver={handleDragOver}
+                                    onClick={() => document.getElementById('file-input').click()}
+                                >
+                                    <input 
+                                        id="file-input"
+                                        type="file" 
+                                        accept="image/*"
+                                        style={{display: 'none'}}
+                                        onChange={(e) => {
+                                            if (e.target.files[0]) {
+                                                handleImageUpload(e.target.files[0]);
+                                            }
+                                        }}
+                                    />
+                                    {loading ? (
+                                        <div className="loading">
+                                            <div>🔄 正在识别图片中的文字...</div>
+                                            <div>请稍候，这可能需要几秒钟</div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div style={{fontSize: '3rem', marginBottom: '10px'}}>📷</div>
+                                            <div>点击或拖拽图片到此处</div>
+                                            <div style={{fontSize: '14px', color: '#666', marginTop: '10px'}}>
+                                                支持课程表、作业截图、手写笔记等
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="calendar-section">
+                        <div className="calendar-header">
+                            <button className="nav-btn" onClick={() => navigateMonth(-1)}>‹</button>
+                            <h2>{currentDate.getFullYear()}年 {currentDate.getMonth() + 1}月</h2>
+                            <button className="nav-btn" onClick={() => navigateMonth(1)}>›</button>
+                        </div>
+                        
+                        <div className="calendar-grid">
+                            {['日', '一', '二', '三', '四', '五', '六'].map(day => (
+                                <div key={day} style={{padding: '10px', textAlign: 'center', background: '#f0f0f0', fontWeight: 'bold'}}>
+                                    {day}
+                                </div>
+                            ))}
+                            {renderCalendar()}
+                        </div>
+                    </div>
+
+                    {/* 任务详情弹窗 */}
+                    {selectedTask && (
+                        <div className="modal" onClick={() => setSelectedTask(null)}>
+                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-header">
+                                    <h3>📋 任务详情</h3>
+                                    <button className="close-btn" onClick={() => setSelectedTask(null)}>×</button>
+                                </div>
+                                
+                                <div className="event-details">
+                                    <div className="field">
+                                        <label>任务标题</label>
+                                        <input 
+                                            type="text" 
+                                            value={selectedTask.title}
+                                            onChange={(e) => setSelectedTask({...selectedTask, title: e.target.value})}
+                                        />
+                                    </div>
+
+                                    <div className="field">
+                                        <label>分类</label>
+                                        <select 
+                                            value={selectedTask.category}
+                                            onChange={(e) => setSelectedTask({...selectedTask, category: e.target.value})}
+                                        >
+                                            <option value="study">📚 学习</option>
+                                            <option value="work">💼 工作</option>
+                                            <option value="personal">🏠 生活</option>
+                                            <option value="other">📁 其他</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="field">
+                                        <label>日期</label>
+                                        <input 
+                                            type="date" 
+                                            value={selectedTask.dueDate ? selectedTask.dueDate.toISOString().split('T')[0] : ''}
+                                            onChange={(e) => setSelectedTask({
+                                                ...selectedTask, 
+                                                dueDate: e.target.value ? new Date(e.target.value) : null
+                                            })}
+                                        />
+                                    </div>
+
+                                    <div className="field">
+                                        <label>时间</label>
+                                        <div className="time-inputs">
+                                            <div>
+                                                <label style={{fontSize: '12px', color: '#888'}}>开始时间</label>
+                                                <input 
+                                                    type="time" 
+                                                    value={selectedTask.startTime || ''}
+                                                    onChange={(e) => setSelectedTask({...selectedTask, startTime: e.target.value})}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{fontSize: '12px', color: '#888'}}>结束时间</label>
+                                                <input 
+                                                    type="time" 
+                                                    value={selectedTask.endTime || ''}
+                                                    onChange={(e) => setSelectedTask({...selectedTask, endTime: e.target.value})}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="field">
+                                        <label>详细描述</label>
+                                        <textarea 
+                                            value={selectedTask.details}
+                                            onChange={(e) => setSelectedTask({...selectedTask, details: e.target.value})}
+                                            placeholder="添加更多详细信息..."
+                                        />
+                                    </div>
+                                    
+                                    {selectedTask.links && selectedTask.links.length > 0 && (
+                                        <div className="links">
+                                            <p><strong>🔗 相关链接：</strong></p>
+                                            {selectedTask.links.map((link, index) => (
+                                                <a key={index} href={link} target="_blank" rel="noopener noreferrer">
+                                                    {link}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    )}
+                                    
+                                    <div className="button-group">
+                                        <button 
+                                            className={`btn ${selectedTask.completed ? 'btn-success' : 'btn-primary'}`}
+                                            onClick={() => {
+                                                toggleTaskComplete(selectedTask.id);
+                                                setSelectedTask(null);
+                                            }}
+                                        >
+                                            {selectedTask.completed ? '✅ 已完成' : '✓ 标记完成'}
+                                        </button>
+                                        <button 
+                                            className="btn btn-primary"
+                                            onClick={() => {
+                                                updateTask(selectedTask.id, selectedTask);
+                                                setSelectedTask(null);
+                                            }}
+                                        >
+                                            💾 保存修改
+                                        </button>
+                                        <button 
+                                            className="btn btn-danger"
+                                            onClick={() => deleteTask(selectedTask.id)}
+                                        >
+                                            🗑️ 删除
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 单日事件展开弹窗 */}
+                    {selectedDayEvents && (
+                        <div className="modal day-events-modal" onClick={() => setSelectedDayEvents(null)}>
+                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-header">
+                                    <h3>📅 {selectedDayEvents.date.getMonth() + 1}月{selectedDayEvents.date.getDate()}日的日程</h3>
+                                    <button className="close-btn" onClick={() => setSelectedDayEvents(null)}>×</button>
+                                </div>
+                                
+                                <div className="day-events-list">
+                                    {selectedDayEvents.tasks
+                                        .sort((a, b) => (a.startTime || '00:00').localeCompare(b.startTime || '00:00'))
+                                        .map(task => (
+                                        <div 
+                                            key={task.id} 
+                                            className={`day-event-item ${task.completed ? 'completed' : ''}`}
+                                            onClick={() => {
+                                                setSelectedDayEvents(null);
+                                                setSelectedTask(task);
+                                            }}
+                                        >
+                                            <div className="day-event-time">
+                                                {task.startTime && task.endTime 
+                                                    ? `${task.startTime} - ${task.endTime}`
+                                                    : task.startTime 
+                                                        ? `${task.startTime}`
+                                                        : '全天'
+                                                }
+                                            </div>
+                                            <div className="day-event-title">{task.title}</div>
+                                            <div className={`day-event-category ${task.category}`}>
+                                                {task.category === 'study' ? '📚 学习' :
+                                                 task.category === 'work' ? '💼 工作' :
+                                                 task.category === 'personal' ? '🏠 生活' : '📁 其他'}
+                                            </div>
+                                            {task.details && (
+                                                <div style={{fontSize: '12px', color: '#666', marginTop: '4px'}}>
+                                                    {task.details.length > 50 ? task.details.substring(0, 50) + '...' : task.details}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // 渲染应用
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
